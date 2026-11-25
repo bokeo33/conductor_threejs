@@ -150,12 +150,12 @@ button:focus-visible{outline:3px solid #c5eb45;outline-offset:2px}
 
 <div class="overlay calib" id="calib" hidden>
   <div class="calib-wrap">
-    <p id="calibStepNo" style="margin:0;font:12px 'DM Mono',monospace;color:#c5eb45">1 / 4</p><h2 id="calibTitle">점선에 얼굴과 두 손을 맞춰주세요</h2>
+    <p id="calibStepNo" style="margin:0;font:12px 'DM Mono',monospace;color:#c5eb45">1 / 4</p><h2 id="calibTitle">어깨를 점선에 맞추고 두 손을 보여주세요</h2>
     <p id="calibMsg">정면을 보고, 손바닥을 활짝 펴서 카메라 쪽으로 보여주세요. 1초 동안 유지하면 다음으로 넘어가요.</p>
     <div class="calib-box">
       <video id="calibVideo" playsinline muted></video><canvas id="calibCv"></canvas>
       <svg viewBox="0 0 160 90" preserveAspectRatio="none" aria-hidden="true">
-        <g id="tFace"><ellipse class="t" cx="80" cy="30" rx="11" ry="15"/><text x="80" y="50">얼굴 · 정면</text><line class="t" x1="52" y1="56" x2="108" y2="56"/><text x="80" y="62">어깨가 여기쯤</text></g>
+        <g id="tFace"><ellipse class="t" cx="80" cy="30" rx="11" ry="15"/><text x="80" y="50">얼굴 · 정면</text></g><g id="tShoulder"><line class="t" x1="52" y1="56" x2="108" y2="56"/><text x="80" y="62">어깨를 이 선에</text></g><line id="tShNow" x1="46" x2="114" y1="56" y2="56" stroke="#ffb347" stroke-width=".7" opacity="0"/>
         <g id="tLeft" transform="translate(32 60)"><g class="t-hand"></g><text x="0" y="20">왼손 · 소리 크기</text></g>
         <g id="tRight" transform="translate(128 60)"><g class="t-hand"></g><text x="0" y="20">오른손 · 지휘봉</text></g>
       </svg>
@@ -1090,6 +1090,7 @@ function showSeasonPick(){state='idle';curtain=0;$('result').hidden=true;$('intr
 const HAND_PATH='M-5.5 8C-6.5 4-7 0-7.5-3L-11-10Q-11.8-12-10-12.3L-6.2-5.5L-5.2-14Q-4.8-16-3.2-15.6L-2.4-6L-1.3-16.5Q-.8-18.2.9-17.6L1.2-6L3.2-15Q3.9-16.6 5.3-15.6L4.6-4L9.5-6.5Q11.5-7 11-5L6 2C6 5 5 7 4.5 8Z';
 document.querySelectorAll('.t-hand').forEach((g,i)=>{g.innerHTML=`<path class="t" d="${HAND_PATH}" transform="${i?'':'scale(-1 1)'}"/>`});
 const TGT={face:{x:80,y:30,rx:11,ry:15},left:{x:32,y:58},right:{x:128,y:58}};
+const SH_LINE={y:56,tol:7,tilt:6};/* calibration step 1: shoulder guide line in the 160x90 calib box, allowed offset and tilt */
 function boxPt(lmx,lmy,box){const bw=box.clientWidth,bh=box.clientHeight,vw=video.videoWidth||16,vh=video.videoHeight||9,s=Math.max(bw/vw,bh/vh),W=vw*s,H=vh*s;return{x:((bw-W)/2+lmx*W)/bw*160,y:((bh-H)/2+lmy*H)/bh*90}}
 let calibStep=1,pr={beats:0,amps:[]},lcStage='hi',lcBuf=[];
 function ding(hi){if(!ac)return;osc('sine',hi?1320:990,ac.currentTime,.12,.12,master,{attack:.005,release:.15})}
@@ -1099,7 +1100,7 @@ function setStep(n){
   calibStep=n;calibHold=0;const c=$('calib');c.classList.toggle('mini',n>1);c.classList.toggle('step3',n>=3);$('calibBar').style.width='0%';
   /* the rehearsal path only does step 1 (in the picture) and step 4 (timing); it teaches the left hand itself */
   $('calibStepNo').textContent=alignOnly?`${n===1?1:2} / 2`:`${n} / 4`;
-  if(n===1){$('calibTitle').textContent='얼굴과 두 손이 화면에 다 보이게 앉아주세요';$('calibMsg').textContent='정확한 위치는 상관없어요. 두 손을 어깨 높이쯤 들고 1초만 있으면 넘어가요.'}
+  if(n===1){$('calibTitle').textContent='어깨를 점선에 맞추고 두 손을 보여주세요';$('calibMsg').textContent='어깨선이 점선에 오도록 앉고, 두 손을 어깨 높이쯤 들어 1초만 있으면 넘어가요.'}
   if(n===2){lcStage='hi';lcBuf=[];$('calibTitle').textContent='왼손을 머리 위로 쭉 올려주세요';$('calibMsg').textContent='제일 크게 연주할 때의 높이예요. 1초만 멈춰 있으면 기억해요.'}
   if(n===3){lpStage='hold';lpCuts=0;$('calibTitle').textContent='왼손 늘이기: 화면 가운데까지 올리고 멈춰요';$('calibMsg').textContent='보면대에 보라색 ◠가 오면 이렇게 해요. 왼손을 들고 1초 동안 가만히 있어 보세요.';$('calibDots').textContent='◠'}
   if(n===4){pr={beats:0,amps:[],offs:[],need:8};$('calibTitle').textContent='"딱" 소리에 맞춰 오른손을 8번 저어보세요';$('calibMsg').textContent='위에서 아래로 "툭" 내리는 순간을 소리에 맞춰요. 카메라가 늦게 알아채는 시간을 재서 판정에 맞춰 줘요.';showDots();startMetro()}
@@ -1140,14 +1141,17 @@ $('calibSkip').addEventListener('click',()=>{if(alignOnly){closeCalib(false);ret
 function updateCalib(dt){
   if(!calibOn)return;const now=performance.now(),poseOk=now-poseSeen<500;
   if(calibStep===1){
-    /* no exact placement any more: it's enough that the face, both shoulders and both hands are in the picture
-       (the face has to stay visible: the pose model finds the person by the face, and the final bow is a head nod) */
-    let fOk=false,lOk=false,rOk=false;
-    if(poseOk&&poseLm){const L=poseLm;fOk=vis(L[0])&&vis(L[11])&&vis(L[12]);lOk=vis(L[15]);rOk=vis(L[16])}
-    $('tFace').classList.toggle('ok',fOk);$('tLeft').classList.toggle('ok',lOk);$('tRight').classList.toggle('ok',rOk);
-    if(fOk&&lOk&&rOk)calibHold+=dt;else calibHold=Math.max(0,calibHold-dt*2);
+    /* every height in the game is measured from the shoulders, so the shoulder line has to sit on the guide line (y 56 of the 160x90 box)
+       and be level; both hands must show; the face only has to be visible (the pose model finds the person by it, and the bow is a nod) */
+    let fOk=false,lOk=false,rOk=false,sOk=false,sy=null,tilt=0;
+    if(poseOk&&poseLm){const L=poseLm;fOk=vis(L[0]);lOk=vis(L[15]);rOk=vis(L[16]);
+      if(vis(L[11])&&vis(L[12])){const box=document.querySelector('#calib .calib-box'),a=boxPt(L[11].x,L[11].y,box),b=boxPt(L[12].x,L[12].y,box);sy=(a.y+b.y)/2;tilt=Math.abs(a.y-b.y);sOk=Math.abs(sy-SH_LINE.y)<SH_LINE.tol&&tilt<SH_LINE.tilt}}
+    const sn=$('tShNow');sn.setAttribute('opacity',sy==null?0:.9);if(sy!=null){const y=Math.max(1,Math.min(89,sy));sn.setAttribute('y1',y);sn.setAttribute('y2',y);sn.setAttribute('stroke',sOk?'#c5eb45':'#ffb347')}
+    $('tFace').classList.toggle('ok',fOk);$('tShoulder').classList.toggle('ok',sOk);$('tLeft').classList.toggle('ok',lOk);$('tRight').classList.toggle('ok',rOk);
+    const allOk=sOk&&fOk&&lOk&&rOk;
+    if(allOk)calibHold+=dt;else calibHold=Math.max(0,calibHold-dt*2);
     $('calibBar').style.width=Math.min(100,calibHold*100)+'%';
-    $('calibMsg').textContent=!poseOk?'몸이 안 보여요. 카메라에서 조금 떨어져 상체가 다 나오게 앉아주세요.':fOk&&lOk&&rOk?'좋아요! 그대로 잠깐만…':!fOk?'얼굴과 두 어깨가 화면에 보이게 앉아주세요.':!lOk&&!rOk?'두 손을 어깨 높이쯤 들어서 화면에 보이게 해주세요.':!lOk?'왼손(화면 왼쪽)이 안 보여요. 조금 더 들어주세요.':'오른손(화면 오른쪽)이 안 보여요. 조금 더 들어주세요.';
+    $('calibMsg').textContent=!poseOk?'몸이 안 보여요. 카메라에서 조금 떨어져 상체가 다 나오게 앉아주세요.':allOk?'좋아요! 그대로 잠깐만…':sy==null?'두 어깨가 화면에 보이게 앉아주세요.':sy<SH_LINE.y-SH_LINE.tol?'어깨가 너무 위에 있어요. 카메라를 조금 위로 올리거나 의자를 낮춰주세요.':sy>SH_LINE.y+SH_LINE.tol?'어깨가 너무 아래예요. 카메라를 조금 낮추거나 뒤로 물러나 주세요.':tilt>=SH_LINE.tilt?'어깨를 수평으로 펴주세요.':!fOk?'얼굴이 화면에 보이게 해주세요.':!lOk&&!rOk?'두 손을 어깨 높이쯤 들어서 화면에 보이게 해주세요.':!lOk?'왼손(화면 왼쪽)이 안 보여요. 조금 더 들어주세요.':'오른손(화면 오른쪽)이 안 보여요. 조금 더 들어주세요.';
     if(calibHold>=1){ding();setStep(alignOnly?4:2)}
   }else if(calibStep===2){
     if(leftH!=null&&now-leftSeen<400){lcBuf.push({t:now,h:leftH});lcBuf=lcBuf.filter(q=>now-q.t<700);
